@@ -1,0 +1,80 @@
+import matplotlib.pyplot as plt
+import numpy as np
+
+gravity = [(0,0,5.972e24),(0,384399000,7.36e22),(-1.5e11,0,1.989e30)] # [(x m,y m, mass kg),...]
+G = 6.673e-11
+
+def getF(V,t=1):
+    X, DX = V
+    x,y = X
+    vx, vy = DX
+    Ax=0
+    Ay=0
+    for gx, gy, gm in gravity:
+       d2 = (gx-x)**2+(gy-y)**2
+       a = G*gm/d2
+       p = x-gx
+       q = y-gy
+       Ax -= a*p/np.sqrt(p*p+q*q)
+       Ay -= a*q/np.sqrt(p*p+q*q)
+    nx = x + vx * t
+    ny = y + vy * t
+    nvx = vx + Ax * t
+    nvy = vy + Ay * t
+
+    return [(nx,ny),(nvx,nvy)]
+
+v = [(0,-6371000),(9800,0)] # [(x m,y m),(dx m/s, dy m/s)] 초기 위치 및 속도
+impulse = [(17000, 17001, -600, -130), (110000, 110000.1, 100, 900), (160000, 160000.1, 300, 1000), (250000, 250000.1, 960, -1700), (880000, 880000.1, 0, 429)]
+time_range = 3000000 # 시뮬레이션 시간 (초)
+time_interval = 10
+M = 678 # 발사체 질량 (kg)
+###############################
+X,Y=[],[]
+
+for i in range(int(time_range/time_interval)):
+    X.append(v[0][0])
+    Y.append(v[0][1])
+    v = getF(v,time_interval)
+    if v[0][0]**2+v[0][1]**2 < 6371000**2:
+        print(i*time_interval,"초 뒤 추락")
+        break
+    if v[0][0]**2+(v[0][1]-384399000)**2 < (1737400+100)**2:
+        print(i*time_interval,"초 뒤 달 도착")
+        break
+    for s,e,dvx,dvy in impulse:
+        if s <= i*time_interval < e:
+            v[1] = (v[1][0]+dvx*time_interval,v[1][1]+dvy*time_interval)
+# 충격량 계산
+I = 0
+for s,e,dvx,dvy in impulse:
+    I += M*np.sqrt(dvx**2+dvy**2)*(e-s)
+print("충격량: %.03f Ns"%I)
+print("최종 속력: %.03f m/s"%np.sqrt(v[1][0]**2+v[1][1]**2))
+if I > 2034000:
+  print("인공위성이 산산조각 났습니다.")
+
+earth = plt.Circle((0, 0), 6371000, color='blue')
+moon = plt.Circle((0,384399000),1737400,color = 'red')
+moon_orbit = plt.Circle((0, 0), 384399000, color = 'black', fill=False)
+fig, ax = plt.subplots()
+ax.set_aspect( 1 )
+ax.add_patch(moon_orbit) #달궤도
+ax.add_patch(earth) #달
+
+ax.add_patch(moon) #지구
+
+#전체 관점
+ #plt.xlim(-1.5e9,5e8)
+ #plt.ylim(-5e8,10e8)
+
+#지구 관점
+size = 2e7
+plt.xlim(-size,size)
+plt.ylim(-size,size)
+
+#달 관점
+# plt.xlim(-2e7,2e7)
+# plt.ylim(384399000-1e7,384399000+1e7)
+
+ax.plot(X,Y, color='orange')
